@@ -69,4 +69,6 @@ private:
 	void QuitToDesktop();
 
 	TOptional<uint32> SelectedIndex;
+
+	void UpdateChildren();
 };

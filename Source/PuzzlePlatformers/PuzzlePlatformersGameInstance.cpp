@@ -134,7 +134,6 @@ void UPuzzlePlatformersGameInstance::OnDestroySessionComplete(FName SessionName,
 {
 	if (Success)
 	{
-		
 		CreateSession();
 	}
 }
@@ -146,19 +145,21 @@ void UPuzzlePlatformersGameInstance::OnFindSessionsComplete(bool Success)
 		UE_LOG(LogTemp, Warning, TEXT("Finished Find Session"));
 
 		TArray<FString> ServerNames;
+// 		ServerNames.Add("Test Server 1");
+// 		ServerNames.Add("Test Server 2");
+// 		ServerNames.Add("Test Server 3");
+// 		ServerNames.Add("Test Server 4");
+
+
 		if (SessionSearch->SearchResults.Num() > 0)
 		{
 			for (const FOnlineSessionSearchResult& SearchResult : SessionSearch->SearchResults)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Found Session: %s"), *SearchResult.GetSessionIdStr());
+				UE_LOG(LogTemp, Warning, TEXT("Found Session: %s"), *SearchResult.GetSessionIdStr())
 				ServerNames.Add(SearchResult.GetSessionIdStr());
 			}
 
 			Menu->SetServerList(ServerNames);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("No sessions found."));
 		}
 	}
 }
