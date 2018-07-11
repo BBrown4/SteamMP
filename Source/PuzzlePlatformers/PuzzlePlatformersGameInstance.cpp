@@ -11,7 +11,8 @@
 #include "PlatformTrigger.h"
 #include "MenuSystem/MenuWidget.h"
 
-const static FName SESSION_NAME = TEXT("My Session Game");
+const static FName SESSION_NAME = NAME_GameSession;
+const static FName SERVER_NAME_SETTINGS_KEY = TEXT("ServerName");
 
 UPuzzlePlatformersGameInstance::UPuzzlePlatformersGameInstance(const FObjectInitializer& ObjectInitializer) 
 {
@@ -65,8 +66,9 @@ void UPuzzlePlatformersGameInstance::InGameLoadMenu()
 	Menu->SetMenuInterface(this);
 }
 
-void UPuzzlePlatformersGameInstance::Host()
+void UPuzzlePlatformersGameInstance::Host(FString ServerName)
 {
+	DesiredServerName = ServerName;
 	if (SessionInterface.IsValid())
 	{
 		auto* ExistingSession = SessionInterface->GetNamedSession(SESSION_NAME);
@@ -81,6 +83,29 @@ void UPuzzlePlatformersGameInstance::Host()
 	}
 }
 
+void UPuzzlePlatformersGameInstance::CreateSession()
+{
+	if (SessionInterface.IsValid())
+	{
+		FOnlineSessionSettings SessionSettings;
+		if (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL")
+		{
+			SessionSettings.bIsLANMatch = true;
+		}
+		else
+		{
+			SessionSettings.bIsLANMatch = false;
+		}
+
+		SessionSettings.NumPublicConnections = 5;
+		SessionSettings.bShouldAdvertise = true;
+		SessionSettings.bUsesPresence = true;
+		SessionSettings.Set(SERVER_NAME_SETTINGS_KEY, DesiredServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+		SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
+	}
+}
+
 void UPuzzlePlatformersGameInstance::Join(uint32 Index)
 {
 
@@ -88,6 +113,14 @@ void UPuzzlePlatformersGameInstance::Join(uint32 Index)
 	if (!SessionSearch.IsValid()) return;
 
 	SessionInterface->JoinSession(0, SESSION_NAME, SessionSearch->SearchResults[Index]);
+}
+
+void UPuzzlePlatformersGameInstance::StartSession()
+{
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->StartSession(SESSION_NAME);
+	}
 }
 
 void UPuzzlePlatformersGameInstance::LoadMainMenu()
@@ -127,7 +160,7 @@ void UPuzzlePlatformersGameInstance::OnCreateSessionComplete(FName SessionName, 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr)) return;
 
-	World->ServerTravel("/Game/ThirdPersonCPP/Maps/ThirdPersonExampleMap?listen");
+	World->ServerTravel("/Game/PuzzlePlatformers/Maps/Lobby?listen");
 }
 
 void UPuzzlePlatformersGameInstance::OnDestroySessionComplete(FName SessionName, bool Success)
@@ -144,7 +177,7 @@ void UPuzzlePlatformersGameInstance::OnFindSessionsComplete(bool Success)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Finished Find Session"));
 
-		TArray<FString> ServerNames;
+		TArray<FServerData> ServerNames;
 // 		ServerNames.Add("Test Server 1");
 // 		ServerNames.Add("Test Server 2");
 // 		ServerNames.Add("Test Server 3");
@@ -156,7 +189,20 @@ void UPuzzlePlatformersGameInstance::OnFindSessionsComplete(bool Success)
 			for (const FOnlineSessionSearchResult& SearchResult : SessionSearch->SearchResults)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Found Session: %s"), *SearchResult.GetSessionIdStr())
-				ServerNames.Add(SearchResult.GetSessionIdStr());
+				FServerData Data;
+				Data.MaxPlayers = SearchResult.Session.SessionSettings.NumPublicConnections;
+				Data.CurrentPlayers = Data.MaxPlayers - SearchResult.Session.NumOpenPublicConnections;
+				Data.HostUsername = SearchResult.Session.OwningUserName;
+				FString ServerName;
+				if (SearchResult.Session.SessionSettings.Get(SERVER_NAME_SETTINGS_KEY, ServerName))
+				{
+					Data.Name = ServerName;
+				}
+				else
+				{
+					Data.Name = "Could not find name";
+				}
+				ServerNames.Add(Data);
 			}
 
 			Menu->SetServerList(ServerNames);
@@ -184,18 +230,4 @@ void UPuzzlePlatformersGameInstance::OnJoinSessionComplete(FName SessionName, EO
 	if (!ensure(PlayerController != nullptr)) return;
 
 	PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
-}
-
-void UPuzzlePlatformersGameInstance::CreateSession()
-{
-	if (SessionInterface.IsValid())
-	{
-		FOnlineSessionSettings SessionSettings;
-		//SessionSettings.bIsLANMatch = true;
-		SessionSettings.NumPublicConnections = 2;
-		SessionSettings.bShouldAdvertise = true;
-		SessionSettings.bUsesPresence = true;
-
-		SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
-	}
 }

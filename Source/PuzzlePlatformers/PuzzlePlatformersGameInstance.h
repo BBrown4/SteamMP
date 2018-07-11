@@ -30,10 +30,12 @@ public:
 	void InGameLoadMenu();
 
 	UFUNCTION(exec)
-	void Host() override;
+	void Host(FString ServerName) override;
 
 	UFUNCTION(exec)
 	void Join(uint32 Index) override;
+
+	void StartSession();
 
 	virtual void LoadMainMenu() override;
 
@@ -50,6 +52,8 @@ private:
 	void OnDestroySessionComplete(FName SessionName, bool Success);
 	void OnFindSessionsComplete(bool Success);
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+
+	FString DesiredServerName;
 	void CreateSession();
 	
 	UMainMenu* Menu;
